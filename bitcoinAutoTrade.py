@@ -1,6 +1,7 @@
 import time
 import pyupbit
 import datetime
+import numpy as np
 
 access = "BxJcocqRrInQl05jBwFMzRURfVLnWx5Ckq28oxmx"
 secret = "tEhVaGCbkZ96G4BngCv3Eau5NKOxJqrRbkKGg79I"
@@ -31,10 +32,34 @@ def get_balance(ticker):
 def get_current_price(ticker):
     """현재가 조회"""
     return pyupbit.get_orderbook(ticker=ticker)["orderbook_units"][0]["ask_price"]
+    
+def get_ror(ticker, k = 0.5):
+    df = pyupbit.get_ohlcv(ticker, count = 30)
+    df['range'] = (df['high'] - df['low']) * k
+    df['target'] = df['open'] + df['range'].shift(1)
 
-import bestk
-  get_bestks()
+    fee = 0.00005
+    df['ror'] = np.where(df['high'] > df['target'],
+                         df['close'] / df['target'] - fee,
+                         1)
 
+    ror = df['ror'].cumprod()[-2]
+    return ror
+
+def get_bestk(ticker):
+  ror = []
+  for k in np.arange(0.1, 1.0, 0.1):
+    ror.append(get_ror(ticker, k))
+  bestk = (ror.index(max(ror)) * 0.1) + 0.1
+  return bestk
+
+def get_bestks():
+  tickers = pyupbit.get_tickers(fiat="KRW")
+  bestks = {}
+  for i in tickers:
+    bestks[i] = get_bestk(i)
+
+get_bestks()
 tickers = pyupbit.get_tickers(fiat="KRW")
 
 
@@ -51,12 +76,12 @@ while True:
 
         if start_time < now < end_time - datetime.timedelta(seconds=600):
             for i in tickers:
-              target_price = get_target_price(i, bestks[i])
-              current_price = get_current_price(i)
-              if target_price < current_price:
-                  krw = get_balance("KRW")
-                  if krw * 0.5 > 5000:
-                      upbit.buy_market_order(i, krw * 0.5)
+                target_price = get_target_price(i, bestks[i])
+                current_price = get_current_price(i)
+                if target_price < current_price:
+                    krw = get_balance("KRW")
+                    if krw * 0.5 > 5000:
+                        upbit.buy_market_order(i, krw * 0.5)
         else:
             for i in tickers:
                 balance = get_balance(i)
