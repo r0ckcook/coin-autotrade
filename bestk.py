@@ -21,8 +21,8 @@ def get_bestk(ticker):
   bestk = (ror.index(max(ror)) * 0.1) + 0.1
   return bestk
 
-tickers = pyupbit.get_tickers(fiat="KRW")
-bestks = {}
-
-for i in tickers:
-  bestks[i] = get_bestk(i)
+def get_bestks():
+    tickers = pyupbit.get_tickers(fiat="KRW")
+    bestks = {}
+  for i in tickers:
+    bestks[i] = get_bestk(i)
